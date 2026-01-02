@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viewfinder – Tool</title>
+
+<style>
+  :root {
+    --bg: #050505;
+    --panel: rgba(10,10,10,0.75);
+    --panel-soft: rgba(10,10,10,0.55);
+    --border: rgba(255,255,255,0.14);
+    --border-strong: rgba(255,255,255,0.26);
+    --text: rgba(255,255,255,0.94);
+    --muted: rgba(255,255,255,0.6);
+    --accent: #4fd1ff;
+    --danger: #ff7b7b;
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: radial-gradient(circle at top, #16181f 0, #050507 45%, #000 100%);
+    color: var(--text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  /* VIDEO & CANVAS */
+  #video, #canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* TOP BAR – full width, subtle glass */
+  #topbar {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    padding: 6px;
+    border-radius: 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    z-index: 50;
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* BOTTOM BAR – centered cluster */
+  #bottombar {
+    position: fixed;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 8px;
+    border-radius: 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    z-index: 50;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* BUTTONS */
+  .btn {
+    appearance: none;
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 7px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 12px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      transform 0.1s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .btn:hover {
+    background: rgba(255,255,255,0.12);
+    border-color: var(--border-strong);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
+  }
+
+  .btn:active {
+    transform: scale(0.96);
+    box-shadow: none;
+  }
+
+  .btn.active {
+    background: rgba(79,209,255,0.18);
+    border-color: rgba(79,209,255,0.5);
+    color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(79,209,255,0.35);
+  }
+
+  .btn.primary {
+    color: var(--accent);
+  }
+
+  .btn.danger {
+    color: var(--danger);
+    border-color: rgba(255,123,123,0.5);
+  }
+
+  /* NOTE TAG (frame readout) */
+  #note {
+    position: fixed;
+    top: 54px;            /* sits just under top bar */
+    left: 12px;
+    padding: 6px 10px;
+    background: var(--panel-soft);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    z-index: 55;
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+  }
+
+  /* CUSTOM RATIO MODAL */
+  #modalCustom {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.55);
+    z-index: 9999;
+  }
+
+  #modalCustomInner {
+    width: 260px;
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 14px;
+    border: 1px solid var(--border-strong);
+    box-shadow:
+      0 18px 45px rgba(0,0,0,0.65),
+      0 0 0 1px rgba(255,255,255,0.04);
+  }
+
+  #modalCustomInner h3 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+
+  #modalCustomInner input,
+  #modalCustomInner select {
+    width: 100%;
+    padding: 7px 9px;
+    margin-top: 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.05);
+    color: var(--text);
+    font-size: 12px;
+  }
+
+  .modalBtn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 9px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .modalBtn:hover {
+    background: rgba(255,255,255,0.13);
+  }
+
+  input[type="file"] { display:none; }
+  /* BG PALETTE — under 👁 */
+#bgPalette {
+  position: fixed;
+  top: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  gap: 8px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 60;
+}
+
+
+#bgPalette button {
+  width: 22px;
+  height: 22px;
+  display: block;
+  padding: 0;
+
+  background-clip: padding-box;
+  border-radius: 5px;
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+
+  appearance: none;
+  -webkit-appearance: none;
+
+}
+</style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#050505">
+</head>
+
+<body>
+
+<video id="video" autoplay playsinline muted></video>
+<canvas id="canvas"></canvas>
+
+<div id="note">Frame: <span id="currentRatio">1:1</span></div>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <button id="loadImgBtn" class="btn" title="Load image">🖼</button>
+  <button id="clearImgBtn" class="btn danger" title="Clear image">Clear</button>
+
+  <button id="toggleCam" class="btn" title="Toggle camera">👁</button>
+  <div id="bgPalette">
+  <button data-bg="#f3e9d2" title="Warm paper"></button>
+  <button data-bg="#ffffff" title="White"></button>
+  <button data-bg="#000000" title="Black"></button>
+</div>
+  <button id="switchBtn" class="btn" title="Switch camera">⇄</button>
+
+
+  <button id="frameFab" class="btn primary" title="Frame preset">1:1</button>
+  <button id="customRatioBtn" class="btn" title="Custom ratio">Custom…</button>
+
+  <button id="deleteBtn" class="btn danger" title="Delete selection">🗑</button>
+
+  <button id="exportBtn" class="btn primary" title="Export frame">📸</button>
+
+  <input id="imgInput" type="file" accept="image/*">
+</div>
+
+<!-- BOTTOM BAR -->
+<div id="bottombar">
+  <button id="dotBtn" class="btn active" title="Dot">Dot</button>
+  <button id="vertBtn" class="btn" title="Vertical line">│</button>
+  <button id="horiBtn" class="btn" title="Horizontal line">—</button>
+  <button id="slantBtn" class="btn" title="Slant line">/</button>
+</div>
+
+<!-- CUSTOM RATIO MODAL -->
+<div id="modalCustom">
+  <div id="modalCustomInner">
+    <h3>Custom Frame (Width × Height)</h3>
+    <input id="crW" type="number" placeholder="Width">
+    <input id="crH" type="number" placeholder="Height">
+    <select id="crUnit">
+      <option value="mm">mm</option>
+      <option value="in">in</option>
+    </select>
+    <button id="crApply" class="modalBtn">Apply</button>
+    <button id="crClose" class="modalBtn">Close</button>
+  </div>
+</div>
+
+<script>
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const DPR = window.devicePixelRatio || 1;
+
+/* Top bar */
+const loadImgBtn = document.getElementById("loadImgBtn");
+const clearImgBtn = document.getElementById("clearImgBtn");
+const imgInput = document.getElementById("imgInput");
+const toggleCam = document.getElementById("toggleCam");
+const switchBtn = document.getElementById("switchBtn");
+
+const frameFab = document.getElementById("frameFab");
+const customRatioBtn = document.getElementById("customRatioBtn");
+const deleteBtn = document.getElementById("deleteBtn");
+const exportBtn = document.getElementById("exportBtn");
+
+/* Bottom bar */
+const dotBtn = document.getElementById("dotBtn");
+const vertBtn = document.getElementById("vertBtn");
+const horiBtn = document.getElementById("horiBtn");
+const slantBtn = document.getElementById("slantBtn");
+
+/* Note */
+const currentRatioLabel = document.getElementById("currentRatio");
+
+/* Modal */
+const modalCustom = document.getElementById("modalCustom");
+const crW = document.getElementById("crW");
+const crH = document.getElementById("crH");
+const crUnit = document.getElementById("crUnit");
+const crApply = document.getElementById("crApply");
+const crClose = document.getElementById("crClose");
+
+/* State */
+let dots = [];
+let lines = [];
+let selected = null;
+let isDragging = false;
+let dragOffset = {x:0,y:0};
+
+let bgImage = null;
+let videoHidden = false;
+let gridBg = "#f3e9d2";
+
+let frame = { x:0, y:0, w:0, h:0, ratio:1 };
+
+let devices = [];
+let currentDeviceIndex = 0;
+let stream = null;
+let mode = "dot";
+
+/* Frame presets */
+const frameList = [
+  {label:"1:1", value:1},
+  {label:"4:5", value:4/5},
+  {label:"5:7", value:5/7},
+  {label:"Golden", value:1.618}
+];
+let frameIndex = 0;
+
+/* -------- Layout -------- */
+function resizeCanvas(){
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  canvas.width = w * DPR;
+  canvas.height = h * DPR;
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+
+  const r = frame.ratio || 1;
+  let fw = w;
+  let fh = w / r;
+  if (fh > h){ fh = h; fw = h * r; }
+  frame.w = fw;
+  frame.h = fh;
+  frame.x = (w - fw)/2;
+  frame.y = (h - fh)/2;
+}
+window.addEventListener("resize", resizeCanvas);
+
+/* -------- Camera -------- */
+async function getDevices(){
+  try{
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    devices = devs.filter(d => d.kind === "videoinput");
+  }catch(e){ console.error(e); }
+}
+
+async function startCamera(){
+  try{
+    if(stream){
+      stream.getTracks().forEach(t=>t.stop());
+      stream = null;
+    }
+    let constraints = { video: { facingMode:"environment" } };
+    if(devices.length > 0){
+      const id = devices[currentDeviceIndex]?.deviceId;
+      if(id) constraints.video = { deviceId:{exact:id} };
+    }
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = stream;
+    await video.play();
+  }catch(e){
+    console.error(e);
+  }
+}
+
+async function switchCamera(){
+  if(devices.length <= 1) return;
+  currentDeviceIndex = (currentDeviceIndex + 1) % devices.length;
+  await startCamera();
+}
+
+/* -------- Helpers -------- */
+function dist(a,b,c,d){
+  const dx = a - c, dy = b - d;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+
+function pointToSegmentDistance(px,py,x1,y1,x2,y2){
+  const A = px - x1, B = py - y1, C = x2 - x1, D = y2 - y1;
+  const dot = A*C + B*D;
+  const lenSq = C*C + D*D;
+  let param = -1;
+  if(lenSq !== 0) param = dot / lenSq;
+  let xx, yy;
+  if(param < 0){ xx = x1; yy = y1; }
+  else if(param > 1){ xx = x2; yy = y2; }
+  else { xx = x1 + param*C; yy = y1 + param*D; }
+  return dist(px,py,xx,yy);
+}
+
+function drawImageCover(img){
+  const iw=img.width, ih=img.height;
+  const cw=canvas.width/DPR, ch=canvas.height/DPR;
+  const ir=iw/ih, cr=cw/ch;
+  let dw=cw, dh=ch, dx=0, dy=0;
+  if(ir>cr){ dh=ch; dw=dh*ir; dx=-(dw-cw)/2; }
+  else{ dw=cw; dh=dw/ir; dy=-(dh-ch)/2; }
+  ctx.drawImage(img,dx,dy,dw,dh);
+}
+
+/* -------- Draw Loop -------- */
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  if(bgImage){
+    drawImageCover(bgImage);
+  } else if(videoHidden){
+    ctx.fillStyle = gridBg;
+    ctx.fillRect(0,0,canvas.width/DPR,canvas.height/DPR);
+  } else if(video.readyState >= 2){
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    if(vw && vh){
+      const cw=canvas.width/DPR, ch=canvas.height/DPR;
+      const vr=vw/vh, cr=cw/ch;
+      let dw=cw, dh=ch, dx=0, dy=0;
+      if(vr>cr){ dh=ch; dw=dh*vr; dx=-(dw-cw)/2; }
+      else{ dw=cw; dh=dw/vr; dy=-(dh-ch)/2; }
+      ctx.drawImage(video,dx,dy,dw,dh);
+    }
+  } else {
+    ctx.fillStyle="#000";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+
+  // dim outside frame
+  ctx.save();
+  ctx.fillStyle="rgba(0,0,0,0.35)";
+  ctx.beginPath();
+  ctx.rect(0,0,canvas.width/DPR,canvas.height/DPR);
+  ctx.rect(frame.x,frame.y,frame.w,frame.h);
+  ctx.fill("evenodd");
+  ctx.restore();
+
+  // frame border
+  ctx.strokeStyle="rgba(255,255,255,0.6)";
+  ctx.lineWidth=1.5;
+  ctx.strokeRect(frame.x,frame.y,frame.w,frame.h);
+
+  // dots (with selection ring)
+  for(let i=0;i<dots.length;i++){
+    const d = dots[i];
+
+    // dot body
+    ctx.beginPath();
+    ctx.fillStyle="rgba(0,150,255,0.9)";
+    ctx.arc(d.x,d.y,4,0,Math.PI*2);
+    ctx.fill();
+
+    // selection halo
+    if(selected && selected.type==="dot" && selected.idx===i){
+      ctx.beginPath();
+      ctx.arc(d.x,d.y,10,0,Math.PI*2);
+      ctx.strokeStyle="rgba(0,150,255,0.6)";
+      ctx.lineWidth=2;
+      ctx.stroke();
+    }
+  }
+
+  // lines (with cyan selection + slant nodes)
+  for(let i=0;i<lines.length;i++){
+    const ln = lines[i];
+
+    if(selected && selected.type==="line" && selected.idx===i){
+      ctx.save();
+      ctx.strokeStyle="rgba(0,180,255,0.18)";
+      ctx.lineWidth=10;
+      ctx.lineCap="round";
+      ctx.beginPath();
+      if(ln.type==="vert"){
+        ctx.moveTo(ln.x,frame.y); ctx.lineTo(ln.x,frame.y+frame.h);
+      } else if(ln.type==="hori"){
+        ctx.moveTo(frame.x,ln.y); ctx.lineTo(frame.x+frame.w,ln.y);
+      } else {
+        ctx.moveTo(ln.x1,ln.y1); ctx.lineTo(ln.x2,ln.y2);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.strokeStyle="rgba(0,200,255,0.95)";
+      ctx.lineWidth=3;
+    } else {
+      ctx.strokeStyle="rgba(255,255,255,0.9)";
+      ctx.lineWidth=2.5;
+    }
+
+    ctx.beginPath();
+    if(ln.type==="vert"){
+      ctx.moveTo(ln.x,frame.y); ctx.lineTo(ln.x,frame.y+frame.h);
+    } else if(ln.type==="hori"){
+      ctx.moveTo(frame.x,ln.y); ctx.lineTo(frame.x+frame.w,ln.y);
+    } else {
+      ctx.moveTo(ln.x1,ln.y1); ctx.lineTo(ln.x2,ln.y2);
+    }
+    ctx.stroke();
+
+    if(ln.type==="slant"){
+      ctx.fillStyle="rgba(255,255,255,0.9)";
+      ctx.beginPath(); ctx.arc(ln.x1,ln.y1,6,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(ln.x2,ln.y2,6,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  requestAnimationFrame(draw);
+}
+
+/* -------- Pointer handling -------- */
+function screenToCanvas(e){
+  const r = canvas.getBoundingClientRect();
+  const x = (e.clientX ?? e.touches?.[0]?.clientX) - r.left;
+  const y = (e.clientY ?? e.touches?.[0]?.clientY) - r.top;
+  return {x,y};
+}
+
+function findNearestDot(x,y){
+  for(let i=0;i<dots.length;i++){
+    if(dist(x,y,dots[i].x,dots[i].y) < 12) return i;
+  }
+  return -1;
+}
+
+function findNearestLine(x,y){
+  for(let i=lines.length-1;i>=0;i--){
+    const ln = lines[i];
+    if(ln.type==="slant"){
+      if(dist(x,y,ln.x1,ln.y1)<12) return {idx:i, part:"p1"};
+      if(dist(x,y,ln.x2,ln.y2)<12) return {idx:i, part:"p2"};
+      const d = pointToSegmentDistance(x,y,ln.x1,ln.y1,ln.x2,ln.y2);
+      if(d < 8) return {idx:i, part:"body"};
+    } else if(ln.type==="vert"){
+      if(Math.abs(x-ln.x)<8 && y>frame.y && y<frame.y+frame.h) return {idx:i, part:"body"};
+    } else if(ln.type==="hori"){
+      if(Math.abs(y-ln.y)<8 && x>frame.x && x<frame.x+frame.w) return {idx:i, part:"body"};
+    }
+  }
+  return null;
+}
+
+canvas.addEventListener("mousedown", e=>{
+  const p = screenToCanvas(e);
+  onPointerDown(p.x,p.y);
+});
+canvas.addEventListener("touchstart", e=>{
+  e.preventDefault();
+  const p = screenToCanvas(e);
+  onPointerDown(p.x,p.y);
+},{passive:false});
+
+function onPointerDown(x,y){
+  isDragging = true;
+
+  const dIdx = findNearestDot(x,y);
+  if(dIdx >= 0){
+    selected = {type:"dot", idx:dIdx};
+    return;
+  }
+
+  const lnHit = findNearestLine(x,y);
+  if(lnHit){
+    selected = {type:"line", idx:lnHit.idx, sub:lnHit.part};
+    const ln = lines[lnHit.idx];
+    if(lnHit.part==="body" && ln){
+      if(ln.type==="slant"){
+        dragOffset.x = x;
+        dragOffset.y = y;
+      } else if(ln.type==="vert"){
+        dragOffset.x = ln.x - x;
+      } else if(ln.type==="hori"){
+        dragOffset.y = ln.y - y;
+      }
+    }
+    return;
+  }
+
+  if(mode==="dot"){
+    dots.push({x,y});
+    selected = {type:"dot", idx:dots.length-1};
+  } else if(mode==="vert"){
+    const vx = Math.max(frame.x, Math.min(frame.x+frame.w, x));
+    lines.push({type:"vert", x:vx});
+    selected = {type:"line", idx:lines.length-1, sub:"body"};
+  } else if(mode==="hori"){
+    const hy = Math.max(frame.y, Math.min(frame.y+frame.h, y));
+    lines.push({type:"hori", y:hy});
+    selected = {type:"line", idx:lines.length-1, sub:"body"};
+  } else if(mode==="slant"){
+    const x2 = x + 120;
+    const y2 = y + 40;
+    lines.push({type:"slant", x1:x, y1:y, x2:x2, y2:y2});
+    selected = {type:"line", idx:lines.length-1, sub:"p2"};
+  }
+}
+
+canvas.addEventListener("mousemove", e=>{
+  const p = screenToCanvas(e);
+  onPointerMove(p.x,p.y);
+});
+canvas.addEventListener("touchmove", e=>{
+  e.preventDefault();
+  const p = screenToCanvas(e);
+  onPointerMove(p.x,p.y);
+},{passive:false});
+
+function onPointerMove(x,y){
+  if(!isDragging || !selected) return;
+
+  if(selected.type==="dot"){
+    dots[selected.idx].x = x;
+    dots[selected.idx].y = y;
+    return;
+  }
+
+  const ln = lines[selected.idx];
+  if(!ln) return;
+
+  if(selected.sub==="p1"){
+    ln.x1 = x; ln.y1 = y;
+  } else if(selected.sub==="p2"){
+    ln.x2 = x; ln.y2 = y;
+  } else if(selected.sub==="body"){
+    if(ln.type==="slant"){
+      const dx = x - dragOffset.x;
+      const dy = y - dragOffset.y;
+      ln.x1 += dx; ln.y1 += dy;
+      ln.x2 += dx; ln.y2 += dy;
+      dragOffset.x = x;
+      dragOffset.y = y;
+    } else if(ln.type==="vert"){
+      ln.x = Math.max(frame.x, Math.min(frame.x+frame.w, x + dragOffset.x));
+    } else if(ln.type==="hori"){
+      ln.y = Math.max(frame.y, Math.min(frame.y+frame.h, y + dragOffset.y));
+    }
+  }
+}
+
+canvas.addEventListener("mouseup", onPointerUp);
+canvas.addEventListener("mouseleave", onPointerUp);
+canvas.addEventListener("touchend", onPointerUp);
+
+function onPointerUp(){
+  isDragging = false;
+  if(selected && selected.type==="line"){
+    const ln = lines[selected.idx];
+    if(ln && ln.type==="slant"){
+      ln.x1 = Math.max(frame.x, Math.min(frame.x+frame.w, ln.x1));
+      ln.x2 = Math.max(frame.x, Math.min(frame.x+frame.w, ln.x2));
+      ln.y1 = Math.max(frame.y, Math.min(frame.y+frame.h, ln.y1));
+      ln.y2 = Math.max(frame.y, Math.min(frame.y+frame.h, ln.y2));
+    }
+  }
+}
+
+/* -------- Delete (button + keys) -------- */
+deleteBtn.onclick = ()=>{
+  if(!selected) return;
+  if(selected.type==="dot") dots.splice(selected.idx,1);
+  if(selected.type==="line") lines.splice(selected.idx,1);
+  selected = null;
+};
+
+window.addEventListener("keydown", e=>{
+  if((e.key === "Delete" || e.key === "Backspace") && selected){
+    if(selected.type==="dot") dots.splice(selected.idx,1);
+    if(selected.type==="line") lines.splice(selected.idx,1);
+    selected = null;
+  }
+});
+
+/* -------- Modes -------- */
+function setMode(m){
+  mode = m;
+  [dotBtn,vertBtn,horiBtn,slantBtn].forEach(b=>b.classList.remove("active"));
+  if(m==="dot") dotBtn.classList.add("active");
+  if(m==="vert") vertBtn.classList.add("active");
+  if(m==="hori") horiBtn.classList.add("active");
+  if(m==="slant") slantBtn.classList.add("active");
+}
+dotBtn.onclick = ()=>setMode("dot");
+vertBtn.onclick = ()=>setMode("vert");
+horiBtn.onclick = ()=>setMode("hori");
+slantBtn.onclick = ()=>setMode("slant");
+
+/* -------- Image Import -------- */
+loadImgBtn.onclick = ()=> imgInput.click();
+imgInput.onchange = e=>{
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = ()=>{
+    bgImage = img;
+    imgInput.value = "";
+  };
+  img.onerror = ()=>{
+    URL.revokeObjectURL(url);
+    imgInput.value = "";
+  };
+  img.src = url;
+};
+clearImgBtn.onclick = ()=>{ bgImage = null; };
+
+/* -------- Camera toggle + BG cycling -------- */
+const bgPalette = document.getElementById("bgPalette");
+
+toggleCam.onclick = ()=>{
+  videoHidden = !videoHidden;
+  bgPalette.style.display = videoHidden ? "flex" : "none";
+};
+  
+switchBtn.onclick = switchCamera;
+  
+bgPalette.querySelectorAll("button").forEach(btn=>{
+  btn.style.background = btn.dataset.bg;
+  btn.onclick = ()=>{
+    gridBg = btn.dataset.bg;
+  };
+});
+
+/* -------- Frame FAB + Custom ratio -------- */
+frameFab.onclick = ()=>{
+  frameIndex = (frameIndex+1) % frameList.length;
+  const f = frameList[frameIndex];
+  frame.ratio = f.value;
+  frameFab.textContent = f.label;
+  currentRatioLabel.textContent = f.label;
+  resizeCanvas();
+};
+
+customRatioBtn.onclick = ()=> modalCustom.style.display = "flex";
+crClose.onclick = ()=> modalCustom.style.display = "none";
+crApply.onclick = ()=>{
+  const w = parseFloat(crW.value);
+  const h = parseFloat(crH.value);
+  if(!w || !h) return;
+  let W = w, H = h;
+  if(crUnit.value === "in"){ W *= 25.4; H *= 25.4; }
+  const ratio = W / H;
+  if(ratio > 0){
+    frame.ratio = ratio;
+    frameFab.textContent = `${w}:${h}`;
+    currentRatioLabel.textContent = `${w}×${h}`;
+    resizeCanvas();
+  }
+  modalCustom.style.display = "none";
+};
+
+/* -------- Export -------- */
+exportBtn.onclick = ()=>{
+  const data = canvas.toDataURL("image/png");
+  const a = document.createElement("a");
+  a.href = data;
+  a.download = "composition.png";
+  a.click();
+};
+
+/* -------- Init -------- */
+(async function init(){
+  await getDevices();
+  await startCamera();
+  frame.ratio = 1;
+  resizeCanvas();
+  draw();
+})();
+  if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js");
+  });
+}
+</script>
+
+</body>
+</html>
