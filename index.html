@@ -62,47 +62,52 @@
   }
 
   /* BOTTOM BAR – centered cluster */
-  #bottombar {
-    position: fixed;
-    bottom: 15px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 6px 8px;
-    border-radius: 14px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    z-index: 50;
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-  }
+ #bottombar {
+  position: fixed;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 50;
+
+  display: flex;
+  gap: 12px;
+  flex-wrap: nowrap;          /* 🔴 single row */
+  align-items: center;
+  justify-content: center;
+
+  width: max-content;         /* 🔴 expand like dock */
+}
+
 
   /* BUTTONS */
   .btn {
-    appearance: none;
-    background: rgba(255,255,255,0.06);
-    color: var(--text);
-    border: 1px solid var(--border);
-    padding: 7px 10px;
-    border-radius: 10px;
-    cursor: pointer;
-    user-select: none;
-    font-size: 12px;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 36px;
-    transition:
-      background 0.15s ease,
-      border-color 0.15s ease,
-      transform 0.1s ease,
-      box-shadow 0.15s ease;
-  }
+  appearance: none;
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 7px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.15s ease;
+}
+
 
   .btn:hover {
     background: rgba(255,255,255,0.12);
@@ -232,11 +237,71 @@
   border-radius: 5px;
   border: 1px solid var(--border-strong);
   cursor: pointer;
-
   appearance: none;
   -webkit-appearance: none;
-
 }
+  /* bottom buttons biggers */
+  #bottombar .btn {
+  padding: 11px 15px;   /* makes buttons bigger */
+  font-size: 13.5px;    /* slightly more legible */
+  min-width: 44px;      /* better tap target */
+  border-radius: 12px;  /* matches increased size */
+}
+
+
+  /* spacer */
+  .group-gap {
+  width: 10px;
+  height: 1px;
+}
+/* ===== HELP AFFORDANCE (SAFE LAYER) ===== */
+
+#helpHint{
+  position: fixed;
+  left: 14px;
+  bottom: 18px;
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.28);
+  z-index: 91;
+  user-select: none;
+  touch-action: none;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+  
+#helpHint:active {
+  color: rgba(255,255,255,0.5);
+}
+
+.help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: auto;
+}
+
+.help-label {
+  position: absolute;
+  padding: 6px 9px;
+  font-size: 11px;
+  border-radius: 9px;
+  background: rgba(12,12,12,0.88);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  white-space: nowrap;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.55);
+
+  /* merged transform */
+  transform: translate(-50%, -120%) rotate(-90deg);
+  transform-origin: left center;
+}
+
+
 </style>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#050505">
@@ -253,6 +318,7 @@
 <div id="topbar">
   <button id="loadImgBtn" class="btn" title="Load image">🖼</button>
   <button id="clearImgBtn" class="btn danger" title="Clear image">Clear</button>
+<span class="group-gap"></span>
 
   <button id="toggleCam" class="btn" title="Toggle camera">👁</button>
   <div id="bgPalette">
@@ -261,12 +327,14 @@
   <button data-bg="#000000" title="Black"></button>
 </div>
   <button id="switchBtn" class="btn" title="Switch camera">⇄</button>
+<span class="group-gap"></span>
 
 
   <button id="frameFab" class="btn primary" title="Frame preset">1:1</button>
-  <button id="customRatioBtn" class="btn" title="Custom ratio">Custom…</button>
+  <button id="customRatioBtn" class="btn" title="Custom ratio">Custom</button>
+<span class="group-gap"></span>
 
-  <button id="deleteBtn" class="btn danger" title="Delete selection">🗑</button>
+  
 
   <button id="exportBtn" class="btn primary" title="Export frame">📸</button>
 
@@ -279,6 +347,8 @@
   <button id="vertBtn" class="btn" title="Vertical line">│</button>
   <button id="horiBtn" class="btn" title="Horizontal line">—</button>
   <button id="slantBtn" class="btn" title="Slant line">/</button>
+  <span class="group-gap"></span>
+  <button id="deleteBtn" class="btn danger" title="Delete selection">🗑</button>
 </div>
 
 <!-- CUSTOM RATIO MODAL -->
@@ -295,7 +365,8 @@
     <button id="crClose" class="modalBtn">Close</button>
   </div>
 </div>
-
+<div id="helpOverlay" class="help-overlay" hidden></div>
+<div id="helpHint">?</div>
 <script>
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
@@ -313,12 +384,99 @@ const frameFab = document.getElementById("frameFab");
 const customRatioBtn = document.getElementById("customRatioBtn");
 const deleteBtn = document.getElementById("deleteBtn");
 const exportBtn = document.getElementById("exportBtn");
+  /* ===== HELP LAYER LOGIC (ISOLATED) ===== */
 
+const helpHint = document.getElementById("helpHint");
+const helpOverlay = document.getElementById("helpOverlay");
+
+let helpTimer = null;
+let helpActive = false;
+const HOLD_MS = 420;
+    
 /* Bottom bar */
 const dotBtn = document.getElementById("dotBtn");
 const vertBtn = document.getElementById("vertBtn");
 const horiBtn = document.getElementById("horiBtn");
 const slantBtn = document.getElementById("slantBtn");
+
+
+/* What gets labeled */
+  
+const helpTargets = [
+  { el: loadImgBtn, label: "Import image" },
+  { el: clearImgBtn, label: "Clear image" },
+  { el: toggleCam, label: "Camera / background" , dx: 19 },
+  { el: switchBtn, label: "Switch camera" },
+  { el: frameFab, label: "Frame ratios" },
+  { el: customRatioBtn, label: "Custom frame" },
+  { el: exportBtn, label: "Export" },
+  { el: dotBtn, label: "Dot guide" },
+  { el: vertBtn, label: "Vertical guide" },
+  { el: horiBtn, label: "Horizontal guide" },
+  { el: slantBtn, label: "Slanted guide" },
+  { el: deleteBtn, label: "Delete selection" }
+];
+
+function showHelp(){
+  if(helpActive) return;
+  helpActive = true;
+  helpOverlay.hidden = false;
+  helpOverlay.innerHTML = "";
+
+helpTargets.forEach((t, i)=>{
+  if(!t.el) return;
+  const r = t.el.getBoundingClientRect();
+  const tag = document.createElement("div");
+  tag.className = "help-label";
+  tag.textContent = t.label;
+
+tag.style.left =
+  (r.left + r.width / 2 + 38 + (t.dx || 0)) + "px";
+
+
+
+const screenMid = window.innerHeight / 2;
+tag.style.top =
+  r.top < screenMid
+    ? (r.bottom + 192) + "px"   // top buttons → move DOWN toward center
+    : (r.top - 60) + "px";     // bottom buttons → move UP toward center
+
+
+  helpOverlay.appendChild(tag);
+});
+
+}
+
+function hideHelp(){
+  clearTimeout(helpTimer);
+  helpTimer = null;
+  helpActive = false;
+  helpOverlay.hidden = true;
+  helpOverlay.innerHTML = "";
+}
+ 
+
+/* Press & hold ONLY on ? */
+helpHint.addEventListener(
+  "pointerdown",
+  e => {
+    e.preventDefault();
+    e.stopPropagation();
+    helpTimer = setTimeout(showHelp, HOLD_MS);
+  },
+  { capture: true }
+);
+
+helpHint.addEventListener("pointerup", hideHelp);
+helpHint.addEventListener("pointerleave", hideHelp);
+helpHint.addEventListener("pointercancel", hideHelp);
+
+/* Auto-hide help affordance when image is loaded */
+imgInput.addEventListener("change", ()=>{
+  helpHint.style.display = "none";
+});
+
+
 
 /* Note */
 const currentRatioLabel = document.getElementById("currentRatio");
@@ -789,11 +947,16 @@ crApply.onclick = ()=>{
 
 /* -------- Export -------- */
 exportBtn.onclick = ()=>{
+  const prev = helpHint.style.display;
+  helpHint.style.display = "none";
+
   const data = canvas.toDataURL("image/png");
   const a = document.createElement("a");
   a.href = data;
   a.download = "composition.png";
   a.click();
+
+  helpHint.style.display = prev || "";
 };
 
 /* -------- Init -------- */
@@ -809,6 +972,8 @@ exportBtn.onclick = ()=>{
     navigator.serviceWorker.register("./sw.js");
   });
 }
+
+
 </script>
 
 </body>
